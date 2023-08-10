@@ -8,7 +8,7 @@ from JetsonCamera import Camera
 from Focuser import Focuser
 
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationGlobal
-import pymavlink
+from pymavlink import mavutil
 import cv2
 
 from cameraThread import vStream
@@ -18,7 +18,7 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy, videoSource
 
 # Global variables
-manualArm = False
+manualArm = True
 
 # Network
 print("Loading network...")
@@ -35,6 +35,8 @@ focuser_cam_2 = Focuser(8)
 focuser_cam_2.set(Focuser.OPT_FOCUS, 150)
 
 # Drone connection
+print("Connecting to mavlink...")
+connect = mavutil.mavlink_connection('localhost:14550', baud=57600)
 print("Connecting to drone...")
 vehicle = connect('localhost:14550', baud=57600, wait_ready=True)
 
@@ -43,20 +45,13 @@ vehicle = connect('localhost:14550', baud=57600, wait_ready=True)
 # Arm and takeoff
 def arm_and_takeoff(targetHeight):    
 
-    # Disable prearm check
-    vehicle.parameters['ARMING_CHECK']=1
-
-    if manualArm == False:
-      vehicle.armed = True
-      while vehicle.armed==False:
-        print("Waiting for vehicle to become armed.")
+    # Arming will be done via the RC transmitter
+    if manualArm:
+      print("Manual arming mode")
+      while not vehicle.armed:
+        print("Vehicle not armed, waiting...")
         time.sleep(1)
-    else:
-      if vehicle.armed == False:
-        print("Exiting script. manualArm set to True but vehicle not armed.")
-        print("Set manualArm to True if desiring script to arm the drone.")
-        return None
-      print("Look out! Props are spinning!!")
+      print("Vehicle armed")
 
     vehicle.mode = VehicleMode("GUIDED")
               
@@ -74,41 +69,28 @@ def arm_and_takeoff(targetHeight):
       time.sleep(1)
     print("Target altitude reached!!")
 
+    # After reaching the target height, set the mode to AltHold
+    vehicle.mode = VehicleMode("ALT_HOLD")
+
     return None
 
 # Drone Velocity Movement
 def send_ned_velocity(velocity_x, velocity_y, velocity_z, duration):
     msg = vehicle.message_factory.set_position_target_local_ned_encode(
-      0,
-      0, 0,
-      pymavlink.mavutil.mavlink.MAV_FRAME_BODY_OFFSET_NED,
-      0b0000111111000111,
-      0, 0, 0,
-      velocity_x, velocity_y, velocity_z,
-      0, 0, 0,
-      0, 0)
+      0, # time_boot_ms (not used)
+      connect.target_system, connect.target_component, # target system, target component
+      mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+      0b0000111111000111, # type_mask (only speeds enabled)
+      0, 0, 0, # x, y, z positions (not used)
+      velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
+      0, 0, 0, # x, y, z acceleration (not used)
+      0, 0 # yaw, yaw_rate (not used
+      )
     
     # send command to vehicle on 1 Hz cycle
     for x in range(0,duration):
       vehicle.send_mavlink(msg)
       time.sleep(1)
-
-# Drone Yaw Movement
-def condition_yaw(heading, relative=False):
-    if relative:
-        is_relative=1 #yaw relative to direction of travel
-    else:
-        is_relative=0 #yaw is an absolute angle
-    msg = vehicle.message_factory.command_long_encode(
-      0, 0, # target system, target component
-      pymavlink.mavutil.mavlink.MAV_CMD_CONDITION_YAW, #command
-      0, #confirmation
-      heading, # param 1, yaw in degrees
-      0, # param 2, yaw speed deg/s
-      1, # param 3, direction -1 ccw, 1 cw
-      is_relative, # param 4, relative offset 1, absolute angle 0
-      0, 0, 0) # param 5 ~ 7 not used
-    vehicle.send_mavlink(msg)
 
 # Obstacle avoidance using LIDAR
 
@@ -171,8 +153,11 @@ def detector():
 
 # Main program
 def main():
-  print("Starting program")
+  print("TAKING OFF")
   arm_and_takeoff(1)
+  # try move forward
+  print("Moving forward")
+  send_ned_velocity(0.5, 0, 0, 5)
   # detector()
 
 

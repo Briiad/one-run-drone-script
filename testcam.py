@@ -4,13 +4,14 @@ from JetsonCamera import Camera
 from Focuser import Focuser
 
 # nvarguscamera
-cam_1 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=0 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=2 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
+cam_1 = cv2.VideoCapture("/dev/video0")
+# cam_1 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=0 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=2 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
 # cam_2 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=1 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=2 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
 
-focuser_cam_1 = Focuser(7)
-focuser_cam_2 = Focuser(8)
-focuser_cam_1.set(Focuser.OPT_FOCUS, 150)
-focuser_cam_2.set(Focuser.OPT_FOCUS, 150)
+# focuser_cam_1 = Focuser(7)
+# focuser_cam_2 = Focuser(8)
+# focuser_cam_1.set(Focuser.OPT_FOCUS, 150)
+# focuser_cam_2.set(Focuser.OPT_FOCUS, 150)
 
 while True:
     ret, frame1 = cam_1.read()
