@@ -3,6 +3,7 @@ import time
 import os
 import platform
 import sys
+import math 
 
 from JetsonCamera import Camera
 from Focuser import Focuser
@@ -10,8 +11,6 @@ from Focuser import Focuser
 from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationGlobal
 from pymavlink import mavutil
 import cv2
-
-from cameraThread import vStream
 
 # Import Jetson Inference library
 from jetson_inference import detectNet
@@ -36,14 +35,68 @@ focuser_cam_2.set(Focuser.OPT_FOCUS, 150)
 
 # Drone connection
 print("Connecting to mavlink...")
-connect = mavutil.mavlink_connection('localhost:14550', baud=57600)
+mav_connect = mavutil.mavlink_connection('localhost:14551', baud=57600)
 print("Connecting to drone...")
-vehicle = connect('localhost:14550', baud=57600, wait_ready=True)
+vehicle = connect('localhost:14550', baud=57600, wait_ready=False)
 
-# ALL FUNCTIONS
+# dronekit check heartbeat
+print("Waiting for heartbeat...")
+vehicle.wait_ready('autopilot_version')
+print("Heartbeat received!")
+
+
+# FUNCTIONS FOR NOGPS NAVIGATION
+
+def send_attitude_target(roll_angle = 0.0, pitch_angle = 0.0, yaw_angle = None, yaw_rate = 0.0, use_yaw_rate = False, thrust = 0.5):
+    if yaw_angle is None:
+      yaw_angle = vehicle.attitude.yaw
+
+    msg = vehicle.message_factory.set_attitude_target_encode(
+      0,
+      1,                                         #target system
+      1,                                         #target component
+      0b00000000 if use_yaw_rate else 0b00000100,#type mask: bit 1 is LSB
+      to_quaternion(roll_angle, pitch_angle, yaw_angle), #q
+      0,                                         #body roll rate in radian
+      0,                                         #body pitch rate in radian
+      math.radians(yaw_rate),                    #body yaw rate in radian/second
+      thrust                                    #thrust
+    )
+    vehicle.send_mavlink(msg)
+
+def set_attitude(roll_angle = 0.0, pitch_angle = 0.0, yaw_angle = None, yaw_rate = 0.0, use_yaw_rate = False, thrust = 0.5, duration = 0):
+    send_attitude_target(roll_angle, pitch_angle, yaw_angle, yaw_rate, False, thrust)
+    start = time.time()
+
+    while time.time() - start < duration:
+      send_attitude_target(roll_angle, pitch_angle, yaw_angle, yaw_rate, False, thrust)
+      time.sleep(0.1)
+
+    # Reset attitude, or it will persist for 1s more due to the timeout
+    send_attitude_target(0, 0, 0, 0, True, thrust)
+
+def to_quaternion(roll = 0.0, pitch = 0.0, yaw = 0.0):
+    t0 = math.cos(math.radians(yaw * 0.5))
+    t1 = math.sin(math.radians(yaw * 0.5))
+    t2 = math.cos(math.radians(roll * 0.5))
+    t3 = math.sin(math.radians(roll * 0.5))
+    t4 = math.cos(math.radians(pitch * 0.5))
+    t5 = math.sin(math.radians(pitch * 0.5))
+
+    w = t0 * t2 * t4 + t1 * t3 * t5
+    x = t0 * t3 * t4 - t1 * t2 * t5
+    y = t0 * t2 * t5 + t1 * t3 * t4
+    z = t1 * t2 * t4 - t0 * t3 * t5
+
+    return [w, x, y, z]
+
+# FUNTION FOR MISSION MOVEMENT
 
 # Arm and takeoff
 def arm_and_takeoff(targetHeight):    
+    
+    DEFAULT_TAKEOFF_THRUST = 0.7
+    SMOOTH_TAKEOFF_THRUST = 0.6
 
     # Arming will be done via the RC transmitter
     if manualArm:
@@ -53,44 +106,26 @@ def arm_and_takeoff(targetHeight):
         time.sleep(1)
       print("Vehicle armed")
 
-    vehicle.mode = VehicleMode("GUIDED")
+    # GUIDED_NOGPS mode for indoor flight
+    vehicle.mode = VehicleMode("GUIDED_NOGPS")
+    print("Vehicle mode set to GUIDED_NOGPS")
               
-    while vehicle.mode!='GUIDED':
-      print("Waiting for drone to enter GUIDED flight mode")
-      time.sleep(1)
-    print("Vehicle now in GUIDED MODE. Have fun!!")
-              
-    vehicle.simple_takeoff(targetHeight) ##meters
+    # Set the takeoff thrust
+    thrust = DEFAULT_TAKEOFF_THRUST
 
+    # Take off to target height
     while True:
-      print("Current Altitude: %d"%vehicle.location.global_relative_frame.alt)
-      if vehicle.location.global_relative_frame.alt>=.95*targetHeight:
+      current_altitude = vehicle.location.global_relative_frame.alt
+      print("Altitude: %f"%current_altitude)
+      if current_altitude >= targetHeight*0.95:
+        print("Reached target altitude")
         break
-      time.sleep(1)
-    print("Target altitude reached!!")
-
-    # After reaching the target height, set the mode to AltHold
-    vehicle.mode = VehicleMode("ALT_HOLD")
+      elif current_altitude >= targetHeight*0.6:
+        thrust = SMOOTH_TAKEOFF_THRUST
+      set_attitude(thrust = thrust)
+      time.sleep(0.2)
 
     return None
-
-# Drone Velocity Movement
-def send_ned_velocity(velocity_x, velocity_y, velocity_z, duration):
-    msg = vehicle.message_factory.set_position_target_local_ned_encode(
-      0, # time_boot_ms (not used)
-      connect.target_system, connect.target_component, # target system, target component
-      mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-      0b0000111111000111, # type_mask (only speeds enabled)
-      0, 0, 0, # x, y, z positions (not used)
-      velocity_x, velocity_y, velocity_z, # x, y, z velocity in m/s
-      0, 0, 0, # x, y, z acceleration (not used)
-      0, 0 # yaw, yaw_rate (not used
-      )
-    
-    # send command to vehicle on 1 Hz cycle
-    for x in range(0,duration):
-      vehicle.send_mavlink(msg)
-      time.sleep(1)
 
 # Obstacle avoidance using LIDAR
 
@@ -153,11 +188,7 @@ def detector():
 
 # Main program
 def main():
-  print("TAKING OFF")
-  arm_and_takeoff(1)
-  # try move forward
-  print("Moving forward")
-  send_ned_velocity(0.5, 0, 0, 5)
+  arm_and_takeoff(40)
   # detector()
 
 
