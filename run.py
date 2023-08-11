@@ -3,7 +3,12 @@ import time
 import os
 import platform
 import sys
-import math 
+import math
+import Jetson.GPIO as GPIO
+
+# output pin 29
+GPIO.setmode(GPIO.BOARD)
+GPIO.setup(29, GPIO.OUT)
 
 from JetsonCamera import Camera
 from Focuser import Focuser
@@ -127,13 +132,90 @@ def arm_and_takeoff(targetHeight):
 
     return None
 
-# Obstacle avoidance using LIDAR
-
 # Payload pickup
+def pickup():
+    # detect the paylod under the drone
+    while True:
+        res, frame = cam_2.read()
+
+        if not res:
+            print("Ignoring empty camera frame.")
+            continue
+
+        # Detect objects
+        img = cudaFromNumpy(frame)
+        detections = net.Detect(img)
+
+        # line to draw in the middle of the frame ( x and y to make sure it's in the middle )
+        cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 3)
+
+        for detection in detections:
+            x = int(detection.Center[0])
+            y = int(detection.Center[1])
+            # circle for center of the object
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+            # if the object is in the middle of the frame with y + 20
+            if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10 and y >= int(frame.shape[0] / 2) + 20:
+              #  lower the drone
+              set_attitude(thrust = 0.4, duration=1)
+              cam_2.release()
+              break
+            # if the object is in the right side of the frame
+
+            # if the object is in the left side of the frame
+
+            # if the object is in the top of the frame
+
+            # if the object is in the bottom of the frame
+
+        # engage electromagnet
+        GPIO.output(29, GPIO.HIGH)
+
+        # Increase altitude
+        set_attitude(thrust = 0.5, duration=1)
+
 
 # Payload drop
+def drop():
+    # detect the paylod under the drone
+    while True:
+        res, frame = cam_2.read()
 
-# Landing
+        if not res:
+            print("Ignoring empty camera frame.")
+            continue
+
+        # Detect objects
+        img = cudaFromNumpy(frame)
+        detections = net.Detect(img)
+
+        # line to draw in the middle of the frame ( x and y to make sure it's in the middle )
+        cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 3)
+
+        for detection in detections:
+            x = int(detection.Center[0])
+            y = int(detection.Center[1])
+            # circle for center of the object
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+            # if the object is in the middle of the frame with y + 20
+            if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10 and y >= int(frame.shape[0] / 2) + 20:
+              #  lower the drone
+              set_attitude(thrust = 0.4, duration=1)
+              cam_2.release()
+              break
+            # if the object is in the right side of the frame
+
+            # if the object is in the left side of the frame
+
+            # if the object is in the top of the frame
+
+            # if the object is in the bottom of the frame
+
+        # disengage electromagnet
+        GPIO.output(29, GPIO.LOW)
+
+        # Increase altitude
+        set_attitude(thrust = 0.5, duration=1)
 
 # Detection
 def detector():
@@ -147,36 +229,47 @@ def detector():
 
         # Detect objects
         img = cudaFromNumpy(frame)
-        # img_csi = cudaFromNumpy(frame_csi)
         detections = net.Detect(img)
-        # detections_csi = net.Detect(img_csi)
 
-        # Draw detections and coordinates of the centroid
+        # line to draw in the middle of the frame ( +10 and -10 to make sure it's in the middle )
+        cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 2)
+
         for detection in detections:
-          # coordinates of the centroid
-          x = int(detection.Center[0])
-          y = int(detection.Center[1])
-          # draw a circle on the centroid
-          cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
-          # draw a rectangle on the object
-          cv2.rectangle(frame, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
-          
-          # for detection_csi in detections_csi:
-          #   # coordinates of the centroid
-          #   x_csi = int(detection_csi.Center[0])
-          #   y_csi = int(detection_csi.Center[1])
-          #   # draw a circle on the centroid
-          #   cv2.circle(frame_csi, (x_csi, y_csi), 5, (0, 0, 255), -1)
-          #   # draw a rectangle on the object
-          #   cv2.rectangle(frame_csi, (int(detection_csi.Left), int(detection_csi.Top)), (int(detection_csi.Right), int(detection_csi.Bottom)), (255, 0, 0), 2)
-          
-          # Show FPS
-          fps_time = time.time()
-          cv2.putText(frame, "FPS: " + str(int(1.0 / (time.time() - fps_time))), (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+            # centroid coordinates
+            x = int(detection.Center[0])
+            y = int(detection.Center[1])
+            # draw circle on centroid
+            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+            # draw bounding box
+            cv2.rectangle(frame, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
+            # object class name and confidence
+            cv2.putText(frame, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
+            # if object is in the right side of the frame
+            if x > int(frame.shape[1] / 2) - 10:
+                # turn right
+                set_attitude(roll_angle = 0, pitch_angle = 0, yaw_angle = 10, thrust = 0.5, duration = 0.5)
+
+            # if object is in the left side of the frame
+            elif x < int(frame.shape[1] / 2) - 10:
+                # turn left
+                set_attitude(roll_angle = 0, pitch_angle = 0, yaw_angle = -10, thrust = 0.5, duration = 0.5)
+
+            # if object is in the middle of the frame
+            elif x > int(frame.shape[1] / 2) - 10 and x < int(frame.shape[1] / 2) + 10:
+                # move forward until the object is hopefully under the drone
+                set_attitude(roll_angle = 0, pitch_angle = 10, yaw_angle = 0, thrust = 0.5, duration = 0.5)
+                # if the object class is "payload"
+                if detection.ClassID == 1:
+                    pickup()
+                # if the object class is "landing"
+                elif detection.ClassID == 2:
+                    drop()
+
+        
         # Display
         cv2.imshow("Frame", frame)
-         # cv2.imshow("Frame CSI", frame_csi)
+        # cv2.imshow("Frame CSI", frame_csi)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cam_1.release()
