@@ -21,7 +21,10 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy, videoSource
 
 # Global variables
+DEFAULT_TAKEOFF_THRUST = 0.7
+SMOOTH_TAKEOFF_THRUST = 0.6
 tof_run = True
+bottom_rangefinder = 0
 
 # Arm with RC transmitter
 manualArm = True
@@ -111,10 +114,7 @@ def to_quaternion(roll = 0.0, pitch = 0.0, yaw = 0.0):
 # FUNTION FOR MISSION MOVEMENT
 
 # Arm and takeoff
-def arm_and_takeoff(targetHeight):    
-    
-    DEFAULT_TAKEOFF_THRUST = 0.7
-    SMOOTH_TAKEOFF_THRUST = 0.6
+def arm_and_takeoff(targetHeight):   
 
     # Arming will be done via the RC transmitter
     if manualArm:
@@ -133,8 +133,9 @@ def arm_and_takeoff(targetHeight):
 
     # Take off to target height
     while True:
-      current_altitude = vehicle.location.global_relative_frame.alt
-      print("Altitude: %f"%current_altitude)
+      # Use rangefinder to detect ground
+      current_altitude = vehicle.rangefinder[bottom_rangefinder].distance
+      print("Altitude: %f"%current_altitude*1.0)
       if current_altitude >= targetHeight*0.95:
         print("Reached target altitude")
         break
@@ -170,8 +171,8 @@ def pickup():
             # if centroid coordinates is in the middlle of the square, lower altitude
             if x >= int(frame.shape[1] / 2) - 20 and x <= int(frame.shape[1] / 2) + 20 and y >= int(frame.shape[0] / 2) - 20 and y <= int(frame.shape[0] / 2) + 20:
                 time.sleep(0.5)
-                # lower altitude
-                set_attitude(thrust = 0.4, duration=2)
+                # lower altitude until 0 m
+                set_attitude(thrust = 4, duration=2)
                 # engage electromagnet
                 GPIO.output(29, GPIO.HIGH)
                 time.sleep(0.5)
@@ -192,8 +193,18 @@ def pickup():
                     set_attitude(pitch_angle = -3, thrust = 0.5, duration=0.2)
                     
         # Increase altitude
-        set_attitude(thrust = 0.6, duration=1)
+        while True:
+            current_altitude = vehicle.rangefinder[bottom_rangefinder].distance
+            print("Altitude: %f"%current_altitude*1.0)
+            if current_altitude >= 1:
+                print("Reached target altitude")
+                break
+            
+            set_attitude(thrust = SMOOTH_TAKEOFF_THRUST)
+            time.sleep(0.2)
+
         cam_2.release()
+        break
 
 # Search for drop zone
 def search():
@@ -282,10 +293,10 @@ def land():
 # Main program
 def main():
   arm_and_takeoff(1)
-  pickup()
-  search()
-  drops()
-  land()
+  # pickup()
+  # search()
+  # drops()
+  # land()
 
 # Run main program
 if __name__ == "__main__":
