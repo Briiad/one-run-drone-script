@@ -1,10 +1,9 @@
 # Import Important Libraries
 import time
-import os
-import platform
-import sys
 import math
 import Jetson.GPIO as GPIO
+import VL53L1X
+import signal
 
 # output pin 29
 GPIO.setmode(GPIO.BOARD)
@@ -22,7 +21,16 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy, videoSource
 
 # Global variables
+tof_run = True
+
+# Arm with RC transmitter
 manualArm = True
+
+# Start VL53L1X sensor
+tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29)
+tof.open()
+
+tof.start_ranging(2)  # Start ranging, 1 = Short Range, 2 = Medium Range, 3 = Long Range
 
 # Network
 print("Loading network...")
@@ -49,6 +57,11 @@ print("Waiting for heartbeat...")
 vehicle.wait_ready('autopilot_version')
 print("Heartbeat received!")
 
+# FUNCTIONS FOR DISTANCE SENSOR
+def exit_handler():
+    global tof_run
+    tof_run = False
+    tof.stop_ranging()
 
 # FUNCTIONS FOR NOGPS NAVIGATION
 
@@ -146,47 +159,48 @@ def pickup():
         img = cudaFromNumpy(frame)
         detections = net.Detect(img)
 
-        # line to draw in the middle of the frame ( x and y to make sure it's in the middle )
-        cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 3)
+        # square to draw in the middle of the frame ( 40 x 40 to make sure it's in the middle )
+        cv2.rectangle(frame, (int(frame.shape[1] / 2) - 20, int(frame.shape[0] / 2) - 20), (int(frame.shape[1] / 2) + 20, int(frame.shape[0] / 2) + 20), (0, 255, 0), 2)
 
         for detection in detections:
             x = int(detection.Center[0])
             y = int(detection.Center[1])
-            # circle for center of the object
+            # draw circle on centroid
             cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
-            # if the object is in the middle of the frame with y + 20
-            if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10 and y >= int(frame.shape[0] / 2) + 20:
-              #  lower the drone
-              set_attitude(thrust = 0.4, duration=1)
-              cam_2.release()
-              break
-            # if the object is in the right side of the frame
-
-            # if the object is in the left side of the frame
-
-            # if the object is in the top of the frame
-
-            # if the object is in the bottom of the frame
-
-        # engage electromagnet
-        GPIO.output(29, GPIO.HIGH)
-
+            # if centroid coordinates is in the middlle of the square, lower altitude
+            if x >= int(frame.shape[1] / 2) - 20 and x <= int(frame.shape[1] / 2) + 20 and y >= int(frame.shape[0] / 2) - 20 and y <= int(frame.shape[0] / 2) + 20:
+                # engage electromagnet
+                GPIO.output(29, GPIO.HIGH)
+                set_attitude(thrust = 0.5, duration=1)
+                break
+            # if centroid outside the square, adjust position
+            else:
+                # if centroid coordinates is in the right side of the frame, roll right
+                if x >= int(frame.shape[1] / 2) + 20:
+                    set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
+                # if centroid coordinates is in the left side of the frame, roll left
+                elif x <= int(frame.shape[1] / 2) - 20:
+                    set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
+                # if centroid coordinates is in the bottom side of the frame, pitch backward
+                elif y >= int(frame.shape[0] / 2) + 20:
+                    set_attitude(pitch_angle = 3, thrust = 0.5, duration=0.2)
+                # if centroid coordinates is in the top side of the frame, pitch forward
+                elif y <= int(frame.shape[0] / 2) - 20:
+                    set_attitude(pitch_angle = -3, thrust = 0.5, duration=0.2)
+                    
         # Increase altitude
         set_attitude(thrust = 0.5, duration=1)
 
 
 # Payload drop
 def drop():
-    # detect the paylod under the drone
-    while True:
-        res, frame = cam_2.read()
-
+    # move forward 2,3 meters
+    GPIO.output(29, GPIO.LOW)
 
 # Detection
 def detector():
     while True:
         res, frame = cam_1.read()
-        # frame_csi = payload_cam.getFrame() 
 
         if not res:
             print("Ignoring empty camera frame.")
@@ -199,32 +213,43 @@ def detector():
         # line to draw in the middle of the frame ( +10 and -10 to make sure it's in the middle )
         cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 2)
 
-        for detection in detections:
-            # centroid coordinates
-            x = int(detection.Center[0])
-            y = int(detection.Center[1])
-            # draw circle on centroid
-            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
-            # draw bounding box
-            cv2.rectangle(frame, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
-            # object class name and confidence
-            cv2.putText(frame, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        # TOF sensor
+        while tof_run:
+            distance_in_mm = tof.get_distance()
+            distance_in_m = distance_in_mm / 1000
+            print("Distance: %f m" % (distance_in_m))
+            time.sleep(0.1)
+            if distance_in_m <= 0.5:
+                # yaw left
+                set_attitude(yaw_angle = 3, thrust = 0.5, duration=0.2)
+            else:
+                for detection in detections:
+                    # centroid coordinates
+                    x = int(detection.Center[0])
+                    y = int(detection.Center[1])
+                    # draw circle on centroid
+                    cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
+                    # draw bounding box
+                    cv2.rectangle(frame, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
+                    # object class name and confidence
+                    cv2.putText(frame, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-            # if centroid coordinates is in the right side of the frame, roll right
-            if x >= int(frame.shape[1] / 2) + 10:
-              set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
-            # if centroid coordinates is in the left side of the frame, roll left
-            elif x <= int(frame.shape[1] / 2) - 10:
-              set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
-            # if centroid coordinates is in the middle of the frame, pitch forward
-            elif x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
-              set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
-              # if object class is payload, pickup
-              if detection.ClassID == "payload":
-                pickup()
-              # if object class is dropzone, drop
-              elif detection.ClassID == "dropzone":
-                drop()
+                    # if centroid coordinates is in the right side of the frame, roll right
+                    if x >= int(frame.shape[1] / 2) + 10:
+                      set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
+                    # if centroid coordinates is in the left side of the frame, roll left
+                    elif x <= int(frame.shape[1] / 2) - 10:
+                      set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
+                    # if centroid coordinates is in the middle of the frame, pitch forward
+                    elif x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
+                      # if object class is payload, pickup
+                      if detection.ClassID == "payload":
+                        set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
+                        pickup()
+                      # if object class is dropzone, drop
+                      elif detection.ClassID == "dropzone":
+                        set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
+                        drop()
         
         # Display
         cv2.imshow("Frame", frame)
@@ -232,14 +257,14 @@ def detector():
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             cam_1.release()
-            # payload_cam.capture.release()
+            signal.signal(signal.SIGINT, exit_handler)
             cv2.destroyAllWindows()
             break
 
 # Main program
 def main():
   arm_and_takeoff(1)
-  # detector()
+  detector()
 
 # Run main program
 if __name__ == "__main__":
