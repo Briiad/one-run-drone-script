@@ -30,8 +30,8 @@ bottom_rangefinder = 0
 manualArm = True
 
 # Start VL53L1X sensor
-tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29)
-tof.open()
+# tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29)
+# tof.open()
 
 tof.start_ranging(2)  # Start ranging, 1 = Short Range, 2 = Medium Range, 3 = Long Range
 
@@ -61,10 +61,10 @@ vehicle.wait_ready('autopilot_version')
 print("Heartbeat received!")
 
 # FUNCTIONS FOR DISTANCE SENSOR
-def exit_handler():
-    global tof_run
-    tof_run = False
-    tof.stop_ranging()
+# def exit_handler():
+#     global tof_run
+#     tof_run = False
+#     tof.stop_ranging()
 
 # FUNCTIONS FOR NOGPS NAVIGATION
 
@@ -209,17 +209,17 @@ def pickup():
 # Search for drop zone
 def search():
     while tof_run:
-        distance_in_mm = tof.get_distance()
-        distance_in_m = distance_in_mm / 1000
-        print("Distance: %f m" % (distance_in_m))
+        # distance_in_mm = tof.get_distance()
+        # distance_in_m = distance_in_mm / 1000
+        # print("Distance: %f m" % (distance_in_m))
         time.sleep(0.1)
-        if distance_in_m <= 0.5:
-            # pitch forward
-            set_attitude(pitch_angle = -3, thrust = 0.5, duration=2)
-            break
-        else:
-            # roll right
-            set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
+        # if distance_in_m <= 0.5:
+        #     # pitch forward
+        #     set_attitude(pitch_angle = -3, thrust = 0.5, duration=2)
+        #     break
+        # else:
+        #     # roll right
+        #     set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
 
 # Drop zone detection
 def drops():
