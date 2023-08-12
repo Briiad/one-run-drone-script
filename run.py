@@ -33,7 +33,7 @@ manualArm = True
 # tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29)
 # tof.open()
 
-tof.start_ranging(2)  # Start ranging, 1 = Short Range, 2 = Medium Range, 3 = Long Range
+# tof.start_ranging(2)  # Start ranging, 1 = Short Range, 2 = Medium Range, 3 = Long Range
 
 # Network
 print("Loading network...")
