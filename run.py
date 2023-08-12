@@ -135,7 +135,7 @@ def arm_and_takeoff(targetHeight):
     while True:
       # Use rangefinder to detect ground
       current_altitude = vehicle.rangefinder[bottom_rangefinder].distance
-      print("Altitude: %f"%current_altitude*1.0)
+      print("Altitude: %f"%current_altitude)
       if current_altitude >= targetHeight*0.95:
         print("Reached target altitude")
         break
@@ -194,8 +194,8 @@ def pickup():
                     
         # Increase altitude
         while True:
-            current_altitude = vehicle.rangefinder[bottom_rangefinder].distance
-            print("Altitude: %f"%current_altitude*1.0)
+            current_altitude = vehicle.rangefinder.distance
+            print("Altitude: %f"%current_altitude)
             if current_altitude >= 1:
                 print("Reached target altitude")
                 break
