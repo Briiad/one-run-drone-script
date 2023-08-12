@@ -181,41 +181,6 @@ def drop():
     while True:
         res, frame = cam_2.read()
 
-        if not res:
-            print("Ignoring empty camera frame.")
-            continue
-
-        # Detect objects
-        img = cudaFromNumpy(frame)
-        detections = net.Detect(img)
-
-        # line to draw in the middle of the frame ( x and y to make sure it's in the middle )
-        cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 3)
-
-        for detection in detections:
-            x = int(detection.Center[0])
-            y = int(detection.Center[1])
-            # circle for center of the object
-            cv2.circle(frame, (x, y), 5, (0, 0, 255), -1)
-            # if the object is in the middle of the frame with y + 20
-            if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10 and y >= int(frame.shape[0] / 2) + 20:
-              #  lower the drone
-              set_attitude(thrust = 0.4, duration=1)
-              cam_2.release()
-              break
-            # if the object is in the right side of the frame
-
-            # if the object is in the left side of the frame
-
-            # if the object is in the top of the frame
-
-            # if the object is in the bottom of the frame
-
-        # disengage electromagnet
-        GPIO.output(29, GPIO.LOW)
-
-        # Increase altitude
-        set_attitude(thrust = 0.5, duration=1)
 
 # Detection
 def detector():
@@ -245,27 +210,21 @@ def detector():
             # object class name and confidence
             cv2.putText(frame, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
-            # if object is in the right side of the frame
-            if x > int(frame.shape[1] / 2) - 10:
-                # turn right
-                set_attitude(roll_angle = 0, pitch_angle = 0, yaw_angle = 10, thrust = 0.5, duration = 0.5)
-
-            # if object is in the left side of the frame
-            elif x < int(frame.shape[1] / 2) - 10:
-                # turn left
-                set_attitude(roll_angle = 0, pitch_angle = 0, yaw_angle = -10, thrust = 0.5, duration = 0.5)
-
-            # if object is in the middle of the frame
-            elif x > int(frame.shape[1] / 2) - 10 and x < int(frame.shape[1] / 2) + 10:
-                # move forward until the object is hopefully under the drone
-                set_attitude(roll_angle = 0, pitch_angle = 10, yaw_angle = 0, thrust = 0.5, duration = 0.5)
-                # if the object class is "payload"
-                if detection.ClassID == 1:
-                    pickup()
-                # if the object class is "landing"
-                elif detection.ClassID == 2:
-                    drop()
-
+            # if centroid coordinates is in the right side of the frame, roll right
+            if x >= int(frame.shape[1] / 2) + 10:
+              set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
+            # if centroid coordinates is in the left side of the frame, roll left
+            elif x <= int(frame.shape[1] / 2) - 10:
+              set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
+            # if centroid coordinates is in the middle of the frame, pitch forward
+            elif x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
+              set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
+              # if object class is payload, pickup
+              if detection.ClassID == "payload":
+                pickup()
+              # if object class is dropzone, drop
+              elif detection.ClassID == "dropzone":
+                drop()
         
         # Display
         cv2.imshow("Frame", frame)
@@ -277,13 +236,10 @@ def detector():
             cv2.destroyAllWindows()
             break
 
-# Payload detection using bottom camera
-
 # Main program
 def main():
-  arm_and_takeoff(40)
+  arm_and_takeoff(1)
   # detector()
-
 
 # Run main program
 if __name__ == "__main__":
