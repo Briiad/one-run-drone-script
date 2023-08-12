@@ -1,6 +1,9 @@
 import time
+from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationGlobal
 
 bottom_rangefinder = 173
+
+vehicle = connect('localhost:14550', baud=57600, wait_ready=False)
 
 # Increase altitude
 while True:
