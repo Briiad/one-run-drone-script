@@ -2,7 +2,6 @@
 import time
 import math
 import Jetson.GPIO as GPIO
-import VL53L1X
 import signal
 
 # output pin 29
@@ -29,15 +28,13 @@ bottom_rangefinder = 173
 # Arm with RC transmitter
 manualArm = True
 
-# Start VL53L1X sensor
-# tof = VL53L1X.VL53L1X(i2c_bus=1, i2c_address=0x29)
-# tof.open()
-
-# tof.start_ranging(2)  # Start ranging, 1 = Short Range, 2 = Medium Range, 3 = Long Range
-
 # Network
 print("Loading network...")
-net = detectNet(argv=['--model=../models/modelv1/ssd-mobilenet.onnx', '--labels=../models/modelv1/labels.txt', '--input-blob=input_0', '--output-cvg=scores', '--output-bbox=boxes'], threshold=0.5)
+net = detectNet(argv=['--model=../models/modelv3/ssd-mobilenet.onnx', '--labels=../models/modelv3/labels.txt', '--input-blob=input_0', '--output-cvg=scores', '--output-bbox=boxes'], threshold=0.5)
+
+# Set network tracking
+net.SetTrackingEnabled(True)
+net.SetTrackingParams(minFrames=3, dropFrames=15, overlapThreshold=0.5)
 
 # Camera
 print("Initializing camera...")
@@ -130,6 +127,9 @@ def arm_and_takeoff(targetHeight):
               
     # Set the takeoff thrust
     thrust = DEFAULT_TAKEOFF_THRUST
+    
+    # wait 2 seconds before taking off
+    time.sleep(2)
 
     # Take off to target height
     while True:
@@ -208,18 +208,17 @@ def pickup():
 
 # Search for drop zone
 def search():
-    while tof_run:
-        # distance_in_mm = tof.get_distance()
-        # distance_in_m = distance_in_mm / 1000
-        # print("Distance: %f m" % (distance_in_m))
-        time.sleep(0.1)
-        # if distance_in_m <= 0.5:
-        #     # pitch forward
-        #     set_attitude(pitch_angle = -3, thrust = 0.5, duration=2)
-        #     break
-        # else:
-        #     # roll right
-        #     set_attitude(roll_angle = -3, thrust = 0.5, duration=0.2)
+    # if current altitude is than 1.2m, and higher than 0.8m, move
+    while True:
+        current_altitude = vehicle.rangefinder.distance
+        print("Altitude: %f"%current_altitude)
+        if current_altitude >= 0.8 and current_altitude <= 1.1:
+            # move right
+            set_attitude(pitch_angle=3, thrust=5, duration=0.2)
+            # if theres obstacle on the right, stop
+        elif current_altitude <= 0.8:
+            set_attitude(thrust = 0.5, duration=0.2)
+        time.sleep(0.2)
 
 # Drop zone detection
 def drops():
@@ -296,7 +295,7 @@ def main():
   # pickup()
   # search()
   # drops()
-  # land()
+  land()
 
 # Run main program
 if __name__ == "__main__":
