@@ -27,7 +27,7 @@ net.SetTrackingParams(minFrames=3, dropFrames=15, overlapThreshold=0.5)
 
 while True:
     res, frame = cam_1.read()
-    resized = cv2.resize(resized, (640, 480))
+    resized = cv2.resize(frame, (640, 480))
 
     if not res:
         print("Ignoring empty camera resized.")
