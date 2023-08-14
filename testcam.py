@@ -1,4 +1,5 @@
 import cv2
+import math
 
 from JetsonCamera import Camera
 from Focuser import Focuser
@@ -45,6 +46,29 @@ while True:
         cv2.rectangle(frame, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
         # object class name and confidence
         cv2.putText(frame, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        # distance between centroid and middle of the frame
+        distance = math.sqrt((detection.Center[0] - int(frame.shape[1] / 2))**2 + (detection.Center[1] - int(frame.shape[0] / 2))**2)
+        # draw distance
+        cv2.putText(frame, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        
+        # if centroid coordinates is in the middlle of the line, drop payload
+        if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
+            # if distance is less than 50, drop payload
+            if distance <= 50:
+                # move forward a bit
+                print("Moving forward a bit")
+                # hover for 1 second
+                print("Hovering for 1 second")
+                print("Payload dropped")  
+                break
+            # if centroid outside the line, adjust position
+            else:
+                # if centroid coordinates is in the right side of the frame, roll right
+                if x >= int(frame.shape[1] / 2) + 10:
+                    print("Roll right")
+                # if centroid coordinates is in the left side of the frame, roll left
+                elif x <= int(frame.shape[1] / 2) - 10:
+                    print("Roll left")
 
     cv2.imshow("Camera 1", frame)
 
