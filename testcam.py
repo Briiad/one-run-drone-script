@@ -23,7 +23,7 @@ net = detectNet(argv=['--model=../models/modelv3/ssd-mobilenet.onnx', '--labels=
 net.SetTrackingEnabled(True)
 net.SetTrackingParams(minFrames=3, dropFrames=15, overlapThreshold=0.5)
 
-
+drop = False
 
 while True:
     res, frame = cam_1.read()
@@ -61,10 +61,13 @@ while True:
             # move forward a bit
             print("Moving forward a bit")
             # if distance is less than 200, drop payload
-            if distance <= 200:
+            if distance <= 120:
                 # hover for 1 second
+                # Move forward 1 meter
+                # Drop payload
                 print("Hovering for 1 second")
                 print("Payload dropped")  
+                drop = True
                 break
             # if centroid outside the line, adjust position
         else:
@@ -77,7 +80,7 @@ while True:
 
     cv2.imshow("Camera 1", resized)
 
-    if cv2.waitKey(1) == ord('q'):
+    if drop == True:
         print("Quitting...")
         break
 
