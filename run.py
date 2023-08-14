@@ -162,6 +162,8 @@ def hover():
 
 # Payload pickup
 def pickup():
+    print("Running pickup program...")
+    pickup = False
     # detect the paylod under the drone
     while True:
         res, frame = cam_2.read()
@@ -189,6 +191,8 @@ def pickup():
                 set_attitude(thrust = 4, duration=2)
                 # engage electromagnet
                 GPIO.output(29, GPIO.HIGH)
+                print("Payload picked up")
+                pickup = True
                 time.sleep(0.5)
                 break
             # if centroid outside the square, adjust position
@@ -216,9 +220,10 @@ def pickup():
             
             set_attitude(thrust = SMOOTH_TAKEOFF_THRUST)
             time.sleep(0.2)
-
-        cam_2.release()
-        break
+        if pickup == True:
+            cam_2.release()
+            cv2.destroyAllWindows()
+            break
 
 # Search for drop zone
 def search():
@@ -236,6 +241,8 @@ def search():
 
 # Drop zone detection
 def drops():
+    print("Running drop program...")
+    drop = False;
     while True:
         res, frame = cam_1.read()
 
@@ -273,6 +280,8 @@ def drops():
                     GPIO.output(29, GPIO.LOW)
                     # hover for 1 second
                     set_attitude(thrust = 0.5, duration=1)
+                    drop = True
+                    print("Payload dropped")  
                     break
             # if centroid outside the line, adjust position
             else:
@@ -284,16 +293,16 @@ def drops():
                     set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
         
         # Display
-        cv2.imshow("Frame", frame)
-        # cv2.imshow("Frame CSI", frame_csi)
+        cv2.imshow("Frame", frame)  
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if drop == True:
             cam_1.release()
             cv2.destroyAllWindows()
             break
 
 # land
 def land():
+    print("Landing...")
     # forward a bit
     set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
     print("Landing...")
