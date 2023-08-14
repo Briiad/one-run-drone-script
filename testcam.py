@@ -60,7 +60,6 @@ while True:
         if x >= int(resized.shape[1] / 2) - 200 and x <= int(resized.shape[1] / 2) + 200:
             # move forward a bit
             print("Moving forward a bit")
-            time.sleep(1)
             # if distance is less than 200, drop payload
             if distance <= 200:
                 # hover for 1 second
