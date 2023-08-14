@@ -26,7 +26,7 @@ tof_run = True
 bottom_rangefinder = 173
 
 # Arm with RC transmitter
-manualArm = True
+manualArm = False
 
 # Network
 print("Loading network...")
@@ -118,6 +118,14 @@ def arm_and_takeoff(targetHeight):
       print("Manual arming mode")
       while not vehicle.armed:
         print("Vehicle not armed, waiting...")
+        time.sleep(1)
+      print("Vehicle armed")
+    else:
+      print("Arming motors")
+      vehicle.armed = True
+      # Confirm vehicle armed before attempting to take off
+      while not vehicle.armed:
+        print("Waiting for arming...")
         time.sleep(1)
       print("Vehicle armed")
 
