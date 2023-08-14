@@ -57,7 +57,7 @@ while True:
         cv2.putText(resized, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         print("Distance: %.1f" % distance)
         # if centroid coordinates is in the middlle of the line, drop payload
-        if x >= int(resized.shape[1] / 2) + 200 and x <= int(resized.shape[1] / 2) - 200:
+        if x >= int(resized.shape[1] / 2) - 200 and x <= int(resized.shape[1] / 2) + 200:
             # move forward a bit
             print("Moving forward a bit")
             time.sleep(1)
