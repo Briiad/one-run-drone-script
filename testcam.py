@@ -1,5 +1,6 @@
 import cv2
 import math
+import time
 
 from JetsonCamera import Camera
 from Focuser import Focuser
@@ -22,6 +23,8 @@ net = detectNet(argv=['--model=../models/modelv3/ssd-mobilenet.onnx', '--labels=
 net.SetTrackingEnabled(True)
 net.SetTrackingParams(minFrames=3, dropFrames=15, overlapThreshold=0.5)
 
+
+
 while True:
     res, frame = cam_1.read()
 
@@ -34,7 +37,7 @@ while True:
     detections = net.Detect(img)
 
     # line to draw in the middle of the frame ( +10 and -10 to make sure it's in the middle )
-    cv2.line(frame, (int(frame.shape[1] / 2) - 10, 0), (int(frame.shape[1] / 2) - 10, frame.shape[0]), (0, 255, 0), 2)
+    cv2.line(frame, (int(frame.shape[1] / 2) - 200, 0), (int(frame.shape[1] / 2) - 200, frame.shape[0]), (0, 255, 0), 2)
 
     for detection in detections:
         # centroid coordinates
@@ -55,6 +58,7 @@ while True:
         if x >= int(frame.shape[1] / 2) - 200 and x <= int(frame.shape[1] / 2) + 200:
             # move forward a bit
             print("Moving forward a bit")
+            time.sleep(1)
             # if distance is less than 200, drop payload
             if distance <= 200:
                 # hover for 1 second
@@ -70,7 +74,7 @@ while True:
             elif x >= int(frame.shape[1] / 2) - 200:
                 print("Roll left")
 
-    # cv2.imshow("Camera 1", frame)
+    cv2.imshow("Camera 1", frame)
 
     if cv2.waitKey(1) == ord('q'):
         print("Quitting...")
