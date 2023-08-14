@@ -52,11 +52,11 @@ while True:
         cv2.putText(frame, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         print("Distance: %.1f" % distance)
         # if centroid coordinates is in the middlle of the line, drop payload
-        if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
-            # if distance is less than 100, drop payload
-            if distance <= 100:
-                # move forward a bit
-                print("Moving forward a bit")
+        if x >= int(frame.shape[1] / 2) - 50 and x <= int(frame.shape[1] / 2) + 50:
+            # move forward a bit
+            print("Moving forward a bit")
+            # if distance is less than 200, drop payload
+            if distance <= 200:
                 # hover for 1 second
                 print("Hovering for 1 second")
                 print("Payload dropped")  
