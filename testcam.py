@@ -50,7 +50,7 @@ while True:
         distance = math.sqrt((detection.Center[0] - int(frame.shape[1] / 2))**2 + (detection.Center[1] - int(frame.shape[0] / 2))**2)
         # draw distance
         cv2.putText(frame, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-
+        print("Distance: %.1f" % distance)
         # if centroid coordinates is in the middlle of the line, drop payload
         if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
             # if distance is less than 50, drop payload
@@ -64,15 +64,16 @@ while True:
             # if centroid outside the line, adjust position
         else:
             # if centroid coordinates is in the right side of the frame, roll right
-            if x >= int(frame.shape[1] / 2) + 10:
+            if x <= int(frame.shape[1] / 2) + 10:
                 print("Roll right")
             # if centroid coordinates is in the left side of the frame, roll left
-            elif x <= int(frame.shape[1] / 2) - 10:
+            elif x >= int(frame.shape[1] / 2) - 10:
                 print("Roll left")
 
     # cv2.imshow("Camera 1", frame)
 
     if cv2.waitKey(1) == ord('q'):
+        print("Quitting...")
         break
 
 
