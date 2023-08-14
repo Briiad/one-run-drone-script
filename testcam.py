@@ -51,8 +51,8 @@ while True:
         cv2.rectangle(resized, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
         # object class name and confidence
         cv2.putText(resized, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-        # distance calculation from the camera
-        distance = (net.GetNetworkHeight() * 0.5) / math.tan(detection.Height * 0.5 * math.pi / 180)
+        # distance calculation between object and camera using euclidean distance
+        distance = math.sqrt((detection.Center[0] - resized.shape[1] / 2) ** 2 + (detection.Center[1] - resized.shape[0] / 2) ** 2)
         # draw distance
         cv2.putText(resized, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         print("Distance: %.1f" % distance)
