@@ -53,8 +53,8 @@ while True:
         print("Distance: %.1f" % distance)
         # if centroid coordinates is in the middlle of the line, drop payload
         if x >= int(frame.shape[1] / 2) - 10 and x <= int(frame.shape[1] / 2) + 10:
-            # if distance is less than 50, drop payload
-            if distance <= 50:
+            # if distance is less than 100, drop payload
+            if distance <= 100:
                 # move forward a bit
                 print("Moving forward a bit")
                 # hover for 1 second
@@ -64,10 +64,10 @@ while True:
             # if centroid outside the line, adjust position
         else:
             # if centroid coordinates is in the right side of the frame, roll right
-            if x <= int(frame.shape[1] / 2) + 10:
+            if x <= int(frame.shape[1] / 2) + 50:
                 print("Roll right")
             # if centroid coordinates is in the left side of the frame, roll left
-            elif x >= int(frame.shape[1] / 2) - 10:
+            elif x >= int(frame.shape[1] / 2) - 50:
                 print("Roll left")
 
     # cv2.imshow("Camera 1", frame)
