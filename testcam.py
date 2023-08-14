@@ -70,7 +70,7 @@ while True:
             elif x <= int(frame.shape[1] / 2) - 10:
                 print("Roll left")
 
-    cv2.imshow("Camera 1", frame)
+    # cv2.imshow("Camera 1", frame)
 
     if cv2.waitKey(1) == ord('q'):
         break
