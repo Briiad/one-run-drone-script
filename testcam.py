@@ -9,8 +9,8 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy
 
 # nvarguscamera
-cam_1 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=0 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=2 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
-cam_2 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=1 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=2 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
+cam_1 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=0 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=0 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
+cam_2 = cv2.VideoCapture("gst-launch-1.0 nvarguscamerasrc sensor_id=1 ! video/x-raw(memory:NVMM), width=1280, height=720, format=NV12, framerate=30/1 ! nvvidconv flip-method=0 ! video/x-raw, format=BGRx ! videoconvert ! video/x-raw, format=BGR ! appsink")
 
 focuser_cam_1 = Focuser(7)
 focuser_cam_2 = Focuser(8)
@@ -38,6 +38,7 @@ while True:
 
     # line to draw in the middle of the frame ( +10 and -10 to make sure it's in the middle )
     cv2.line(frame, (int(frame.shape[1] / 2) - 200, 0), (int(frame.shape[1] / 2) - 200, frame.shape[0]), (0, 255, 0), 2)
+    cv2.line(frame, (int(frame.shape[1] / 2) + 200, 0), (int(frame.shape[1] / 2) + 200, frame.shape[0]), (0, 255, 0), 2)
 
     for detection in detections:
         # centroid coordinates
@@ -55,7 +56,7 @@ while True:
         cv2.putText(frame, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         print("Distance: %.1f" % distance)
         # if centroid coordinates is in the middlle of the line, drop payload
-        if x >= int(frame.shape[1] / 2) - 200 and x <= int(frame.shape[1] / 2) + 200:
+        if x >= int(frame.shape[1] / 2) + 200 and x <= int(frame.shape[1] / 2) - 200:
             # move forward a bit
             print("Moving forward a bit")
             time.sleep(1)
@@ -68,10 +69,10 @@ while True:
             # if centroid outside the line, adjust position
         else:
             # if centroid coordinates is in the right side of the frame, roll right
-            if x <= int(frame.shape[1] / 2) + 200:
+            if x >= int(frame.shape[1] / 2) + 200:
                 print("Roll right")
             # if centroid coordinates is in the left side of the frame, roll left
-            elif x >= int(frame.shape[1] / 2) - 200:
+            elif x <= int(frame.shape[1] / 2) - 200:
                 print("Roll left")
 
     cv2.imshow("Camera 1", frame)
