@@ -288,7 +288,7 @@ def land():
 
 # Main program
 def main():
-  arm_and_takeoff(0.5)
+  arm_and_takeoff(0.8)
   # pickup()
   # search()
   # drops()
