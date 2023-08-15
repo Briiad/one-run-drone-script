@@ -139,6 +139,8 @@ def arm_and_takeoff(targetHeight):
 def pickup():
     print("Running pickup program...")
     pickup = False
+    # move right a bit
+    set_attitude(pitch_angle=3, thrust=5, duration=1)
     # detect the paylod under the drone
     while True:
         res, frame = cam_2.read()
@@ -277,9 +279,6 @@ def drops():
 
 # land
 def land():
-    print("Landing...")
-    # forward a bit
-    set_attitude(pitch_angle = -3, thrust = 0.5, duration=1)
     print("Landing...")
     vehicle.mode = VehicleMode("LAND")
     while not vehicle.mode == "LAND":
