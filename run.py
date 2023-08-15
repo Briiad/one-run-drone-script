@@ -210,7 +210,8 @@ def search():
         print("Altitude: %f"%current_altitude)
         if current_altitude >= 0.8 and current_altitude <= 1.1:
             # move right
-            set_attitude(pitch_angle=3, thrust=5, duration=0.2)
+            set_attitude(pitch_angle=3, thrust=5, duration=4)
+            break
             # if theres obstacle on the right, stop
         elif current_altitude <= 0.8:
             set_attitude(thrust = 0.5, duration=0.2)
