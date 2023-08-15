@@ -135,19 +135,6 @@ def arm_and_takeoff(targetHeight):
             break
         time.sleep(1)
 
-# hover mode
-def hover():
-    # hover loop
-    while True:
-        # if current altitude is than 1.2m, and higher than 0.8m, hover
-        current_altitude = vehicle.rangefinder.distance
-        alt_error = current_altitude - 1 # 1 meter
-        print("Altitude: %f"%current_altitude)
-        if current_altitude >= 0.8 and current_altitude <= 1.2:
-            print("Hovering...")
-            vehicle.channels.overrides['3'] = 1500 + (alt_error * 100)
-        time.sleep(0.2)
-
 # Payload pickup
 def pickup():
     print("Running pickup program...")
