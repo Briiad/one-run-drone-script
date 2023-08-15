@@ -20,8 +20,8 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy, videoSource
 
 # Global variables
-DEFAULT_TAKEOFF_THRUST = 0.7
-SMOOTH_TAKEOFF_THRUST = 0.6
+DEFAULT_TAKEOFF_THRUST = 0.55
+SMOOTH_TAKEOFF_THRUST = 0.5
 tof_run = True
 bottom_rangefinder = 173
 
