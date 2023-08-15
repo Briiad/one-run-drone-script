@@ -144,7 +144,7 @@ def arm_and_takeoff(targetHeight):
       # Use rangefinder to detect ground
       current_altitude = vehicle.rangefinder.distance
       print("Altitude: %f"%current_altitude)
-      if current_altitude >= targetHeight*0.95:
+      if current_altitude >= targetHeight*0.8:
         set_attitude(thrust = 0.5, duration=1)
         print("Reached target altitude")
         break
@@ -322,7 +322,7 @@ def land():
 
 # Main program
 def main():
-  arm_and_takeoff(1)
+  arm_and_takeoff(0.9)
   # pickup()
   # search()
   # drops()
