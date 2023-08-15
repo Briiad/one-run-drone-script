@@ -20,7 +20,7 @@ from jetson_inference import detectNet
 from jetson_utils import cudaFromNumpy, videoSource
 
 # Global variables
-DEFAULT_TAKEOFF_THRUST = 0.55
+DEFAULT_TAKEOFF_THRUST = 0.6
 SMOOTH_TAKEOFF_THRUST = 0.5
 tof_run = True
 bottom_rangefinder = 173
@@ -112,48 +112,27 @@ def to_quaternion(roll = 0.0, pitch = 0.0, yaw = 0.0):
 
 # Arm and takeoff
 def arm_and_takeoff(targetHeight):   
-
-    # Arming will be done via the RC transmitter
-    if manualArm:
-      print("Manual arming mode")
-      while not vehicle.armed:
-        print("Vehicle not armed, waiting...")
+    while not vehicle.is_armable:
+        print("Waiting for vehicle to initialize...")
         time.sleep(1)
-      print("Vehicle armed")
-    else:
-      print("Arming motors")
-      vehicle.armed = True
-      # Confirm vehicle armed before attempting to take off
-      while not vehicle.armed:
+
+    print("Arming motors...")
+    vehicle.mode = VehicleMode("GUIDED")
+    vehicle.armed = True
+
+    while not vehicle.armed:
         print("Waiting for arming...")
         time.sleep(1)
-      print("Vehicle armed")
 
-    # GUIDED_NOGPS mode for indoor flight
-    vehicle.mode = VehicleMode("GUIDED_NOGPS")
-    print("Vehicle mode set to GUIDED_NOGPS")
-              
-    # Set the takeoff thrust
-    thrust = DEFAULT_TAKEOFF_THRUST
-    
-    # wait 2 seconds before taking off
-    time.sleep(2)
+    print("Taking off...")
+    vehicle.simple_takeoff(targetHeight)
 
-    # Take off to target height
     while True:
-      # Use rangefinder to detect ground
-      current_altitude = vehicle.rangefinder.distance
-      print("Altitude: %f"%current_altitude)
-      if current_altitude >= targetHeight*0.8:
-        set_attitude(thrust = 0.5, duration=1)
-        print("Reached target altitude")
-        break
-      elif current_altitude >= targetHeight*0.6:
-        thrust = SMOOTH_TAKEOFF_THRUST
-      set_attitude(thrust = thrust)
-      time.sleep(0.2)
-
-    return None
+        print("Altitude: %f"%vehicle.rangefinder.distance)
+        if vehicle.rangefinder.distance >= targetHeight * 0.85:
+            print("Reached target altitude")
+            break
+        time.sleep(1)
 
 # hover mode
 def hover():
