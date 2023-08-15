@@ -124,6 +124,7 @@ def arm_and_takeoff(targetHeight):
         print("Waiting for arming...")
         time.sleep(1)
 
+    time.sleep(3)
     print("Taking off...")
     vehicle.simple_takeoff(targetHeight)
 
