@@ -28,7 +28,47 @@ while True:
 
     cv2.imshow("Camera 1", frame)
 
-    if cv2.waitKey(1) == ord('q'):
+    for detection in detections:
+        # centroid coordinates
+        x = int(detection.Center[0])
+        y = int(detection.Center[1])
+        # draw circle on centroid
+        cv2.circle(resized, (x, y), 5, (0, 0, 255), -1)
+        # draw bounding box
+        cv2.rectangle(resized, (int(detection.Left), int(detection.Top)), (int(detection.Right), int(detection.Bottom)), (255, 0, 0), 2)
+        # object class name and confidence
+        cv2.putText(resized, "%s (%.1f%%)" % (detection.ClassID, detection.Confidence * 100), (int(detection.Left), int(detection.Top) - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        # distance calculation from the camera
+        distance = (net.GetNetworkHeight() * 0.5) / math.tan(detection.Height * 0.5 * math.pi / 180)
+        # draw distance
+        cv2.putText(resized, "Distance: %.1f" % distance, (int(detection.Left), int(detection.Top) - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        print("Distance: %.1f" % distance)
+        # if centroid coordinates is in the middlle of the line, drop payload
+        if x >= int(resized.shape[1] / 2) - 200 and x <= int(resized.shape[1] / 2) + 200:
+            # move forward a bit
+            print("Moving forward a bit")
+            # if distance is less than 200, drop payload
+            if distance <= 120:
+                # hover for 1 second
+                # Move forward 1 meter
+                # Drop payload
+                print("Hovering for 1 second")
+                print("Payload dropped")  
+                drop = True
+                break
+            # if centroid outside the line, adjust position
+        else:
+            # if centroid coordinates is in the right side of the resized, roll right
+            if x >= int(resized.shape[1] / 2) + 200:
+                print("Roll right")
+            # if centroid coordinates is in the left side of the resized, roll left
+            elif x <= int(resized.shape[1] / 2) - 200:
+                print("Roll left")
+
+    cv2.imshow("Camera 1", resized)
+
+    if drop == True:
+        print("Quitting...")
         break
 
 
