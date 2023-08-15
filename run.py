@@ -191,14 +191,14 @@ def pickup():
         while True:
             current_altitude = vehicle.rangefinder.distance
             print("Altitude: %f"%current_altitude)
-            if current_altitude >= 1:
+            if current_altitude >= 0.8:
                 print("Reached target altitude")
                 break
             
             set_attitude(thrust = SMOOTH_TAKEOFF_THRUST)
             time.sleep(0.2)
         if pickup == True:
-            cam_2.release()
+            # cam_2.release()
             cv2.destroyAllWindows()
             break
 
@@ -208,12 +208,12 @@ def search():
     while True:
         current_altitude = vehicle.rangefinder.distance
         print("Altitude: %f"%current_altitude)
-        if current_altitude >= 0.8 and current_altitude <= 1.1:
+        if current_altitude >= 0.7 and current_altitude <= 1.1:
             # move right
             set_attitude(pitch_angle=3, thrust=5, duration=4)
             break
             # if theres obstacle on the right, stop
-        elif current_altitude <= 0.8:
+        elif current_altitude <= 0.7:
             set_attitude(thrust = 0.5, duration=0.2)
         time.sleep(0.2)
 
@@ -271,7 +271,7 @@ def drops():
                     set_attitude(roll_angle = 3, thrust = 0.5, duration=0.2)
         
         # Display
-        cv2.imshow("Frame", frame)  
+        # cv2.imshow("Frame", frame)  
 
         if drop == True:
             cam_1.release()
@@ -290,9 +290,9 @@ def land():
 # Main program
 def main():
   arm_and_takeoff(0.8)
-  # pickup()
-  # search()
-  # drops()
+  pickup()
+  search()
+  drops()
   land()
 
 # Run main program
